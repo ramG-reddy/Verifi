@@ -1,0 +1,72 @@
+# version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: advisor_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  ml:
+    build: ./ml
+    develop:
+      watch:
+        - path: ./ml
+          target: /app
+          action: sync
+    environment:
+      - ML_MODEL_PATH=/app/models/model.joblib
+      - TRAIN_DATA=/app/data/train.csv
+      - NSE_DATA=/data/NSE_COMPANIES.csv
+      - BSE_DATA=/data/BSE_COMPANIES.csv
+      - SEBI_DATA=/data/SEBI_REGISTERED_ADVISORS.csv
+    volumes:
+      - ../DataRepo:/data
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - postgres
+
+  web:
+    build: ./web
+    develop:
+      watch:
+        - path: ./web/package.json
+          action: rebuild
+        - path: ./web/package-lock.json
+          action: rebuild
+        - path: ./web/app
+          target: /app
+          action: sync
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/advisor_db
+      - REDIS_URL=redis://redis:6379
+      - ML_SERVICE_URL=http://ml:8001/score
+      - NSE_COMPANIES_CSV=/data/NSE_COMPANIES.csv
+      - BSE_COMPANIES_CSV=/data/BSE_COMPANIES.csv
+      - SEBI_REGISTRY_CSV=/data/SEBI_REGISTERED_ADVISORS.csv
+    depends_on:
+      - postgres
+      - redis
+      - ml
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../DataRepo:/data
+
+volumes:
+  db-data:
