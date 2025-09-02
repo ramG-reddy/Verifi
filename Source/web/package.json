@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack -p 3000",
     "build": "next build --turbopack",
-    "start": "next start -p 3000"
+    "start": "next start -p 3000",
+    "prisma:gen": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
