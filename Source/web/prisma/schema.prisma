@@ -20,7 +20,6 @@ model Advisor {
   category      String?  // Individual, Corporate, etc.
   
   // Additional fields for better verification
-  alternateNames String? // Common variations/aliases of the name
   qualifications String? // Educational/professional qualifications
   specialization String? // Investment specialization areas
   

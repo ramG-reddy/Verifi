@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: advisor_db
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ../DBMount:/data
     ports:
       - "5432:5432"
 
