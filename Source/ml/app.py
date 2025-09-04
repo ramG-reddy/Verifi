@@ -32,24 +32,18 @@ class ScoreRequest(BaseModel):
         }
 
 class ScoreResponse(BaseModel):
-    # text: str
     fraud_probability: float
     prediction: str
     confidence_level: str
     risk_indicators: List[str]
-    # extracted_returns: Optional[int] = None
-    # extracted_timeframe: Optional[str] = None
     
     class Config:
         schema_extra = {
             "example": {
-                # "text": "Sample text",
                 "fraud_probability": 0.85,
                 "prediction": "FRAUDULENT",
                 "confidence_level": "HIGH",
-                "risk_indicators": ["Guaranteed returns promised", "Urgency tactics"],
-                # "extracted_returns": 25,
-                # "extracted_timeframe": "2 weeks"
+                "risk_indicators": ["Guaranteed returns promised", "Urgency tactics"]
             }
         }
 
@@ -227,13 +221,10 @@ async def score_text(request: ScoreRequest):
         risk_indicators = extract_risk_indicators(request.text, returns_percentage, timeframe)
         
         return ScoreResponse(
-            # text=request.text[:100] + "..." if len(request.text) > 100 else request.text,
             fraud_probability=round(fraud_probability, 4),
             prediction=prediction,
             confidence_level=confidence_level,
-            risk_indicators=risk_indicators,
-            # extracted_returns=extracted_returns,
-            # extracted_timeframe=extracted_timeframe
+            risk_indicators=risk_indicators
         )
     
     except HTTPException:
