@@ -30,14 +30,6 @@ services:
         - path: ./ml
           target: /app
           action: sync
-    environment:
-      - ML_MODEL_PATH=/app/models/model.joblib
-      - TRAIN_DATA=/app/data/train.csv
-      - NSE_DATA=/data/NSE_COMPANIES.csv
-      - BSE_DATA=/data/BSE_COMPANIES.csv
-      - SEBI_DATA=/data/SEBI_REGISTERED_ADVISORS.csv
-    volumes:
-      - ../DataRepo:/data
     ports:
       - "8001:8001"
     depends_on:

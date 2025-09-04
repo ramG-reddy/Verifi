@@ -1,253 +1,282 @@
 import os, pandas as pd, joblib
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+import warnings
+warnings.filterwarnings('ignore')
 
-DATA_PATH = os.environ.get("TRAIN_DATA", "/app/data/train.csv")
-MODEL_PATH = os.environ.get("ML_MODEL_PATH", "/app/models/model.joblib")
-NSE_DATA = os.environ.get("NSE_DATA", "/data/NSE_COMPANIES.csv")
-BSE_DATA = os.environ.get("BSE_DATA", "/data/BSE_COMPANIES.csv")
-SEBI_DATA = os.environ.get("SEBI_DATA", "/data/SEBI_REGISTERED_ADVISORS.csv")
-COMPANIES_DATA = os.environ.get("COMPANIES_DATA", "/data/TOP_500_COMPANIES.csv")
+# Paths
+DATA_PATH = os.environ.get("TRAIN_DATA", os.path.join(os.path.dirname(__file__), "financial_advice_dataset.csv"))
+MODEL_PATH = os.environ.get("ML_MODEL_PATH", os.path.join(os.path.dirname(__file__), "model.joblib"))
 
-def load_legitimate_companies():
-    """Load legitimate companies from NSE and BSE data"""
-    companies = set()
-    
-    # Load NSE companies
-    if os.path.exists(NSE_DATA):
-        try:
-            nse_df = pd.read_csv(NSE_DATA)
-            # Handle different possible column names
-            name_cols = ['COMPANY NAME', 'Company Name', 'NAME OF COMPANY', 'Symbol', 'SYMBOL', 'Trading Member Name']
-            for col in name_cols:
-                if col in nse_df.columns:
-                    companies.update(nse_df[col].dropna().astype(str).str.upper().tolist())
-                    break
-        except Exception as e:
-            print(f"Error loading NSE data: {e}")
-    
-    # Load BSE companies
-    if os.path.exists(BSE_DATA):
-        try:
-            bse_df = pd.read_csv(BSE_DATA)
-            # Handle different possible column names
-            name_cols = ['Security Name', 'Company Name', 'COMPANY NAME', 'Security Id', 'SECURITY_NAME', 'Trading Member Name']
-            for col in name_cols:
-                if col in bse_df.columns:
-                    companies.update(bse_df[col].dropna().astype(str).str.upper().tolist())
-                    break
-        except Exception as e:
-            print(f"Error loading BSE data: {e}")
-
-    # Load Top 500 Companies
-    if os.path.exists(COMPANIES_DATA):
-        try:
-            top500_df = pd.read_csv(COMPANIES_DATA)
-            # Handle different possible column names
-            name_cols = ['Company Name', 'NAME OF COMPANY', 'Symbol']
-            for col in name_cols:
-                if col in top500_df.columns:
-                    companies.update(top500_df[col].dropna().astype(str).str.upper().tolist())
-                    break
-        except Exception as e:
-            print(f"Error loading Top 500 Companies data: {e}")
-
-    return list(companies)
-
-def load_sebi_entities():
-    """Load SEBI registered entities"""
-    entities = set()
-    
-    if os.path.exists(SEBI_DATA):
-        try:
-            sebi_df = pd.read_csv(SEBI_DATA)
-            # Handle different possible column names
-            name_cols = ['Name of the Entity', 'Entity Name', 'NAME', 'ENTITY_NAME']
-            for col in name_cols:
-                if col in sebi_df.columns:
-                    entities.update(sebi_df[col].dropna().astype(str).str.upper().tolist())
-                    break
-        except Exception as e:
-            print(f"Error loading SEBI data: {e}")
-    
-    return list(entities)
-
-def generate_training_data():
-    """Generate comprehensive training data with real entity names"""
-    
-    # Load legitimate entities
-    legitimate_companies = load_legitimate_companies()
-    sebi_entities = load_sebi_entities()
-    
-    # Fraudulent patterns
-    fraud_patterns = [
-        "Guaranteed {returns}% returns in {timeframe}! Join our premium Telegram group now!",
-        "URGENT: Pre-IPO shares of {company} available. Limited time offer!",
-        "Insider trading tips! Double your money in {timeframe}. Contact {contact}",
-        "Risk-free investment! {return}% assured returns. Send money to {upi}",
-        "Secret stock tips from SEBI insiders. Pay ₹{amount} for premium access",
-        "Last chance! {company} IPO allotment guaranteed. Pay processing fee now",
-        "Exclusive: Get rich quick scheme. {returns}% profit in {timeframe} guaranteed!",
-        "Hot tip: Buy {company} shares before announcement. 100% profit assured",
-        "Special offer: Pre-IPO allocation of {company}. Send payment immediately",
-        "Guaranteed profit! Join our WhatsApp group for sure-shot tips"
-    ]
-    
-    # Legitimate patterns
-    legit_patterns = [
-        "SEBI registered investment advisor. Mutual funds subject to market risks",
-        "{company} is a well-established company listed on NSE/BSE",
-        "Invest in diversified equity mutual funds for long-term wealth creation",
-        "SIP in mutual funds can help achieve your financial goals over time",
-        "Please read the offer document carefully before investing",
-        "Past performance is not indicative of future returns",
-        "Consult your financial advisor before making investment decisions",
-        "Systematic investment plans help in rupee cost averaging",
-        "SEBI registration: {reg_no}. Please verify our credentials",
-        "Investments in securities market are subject to market risks"
-    ]
-    
-    texts = []
-    labels = []
-    
-    # Generate fraudulent samples
-    for _ in range(800):
-        pattern = np.random.choice(fraud_patterns)
-        
-        # Fill placeholders with realistic values
-        text = pattern.format(
-            returns=np.random.choice([15, 20, 25, 30, 40, 50, 100, 200]),
-            timeframe=np.random.choice(["1 week", "2 weeks", "1 month", "few days", "24 hours"]),
-            company=np.random.choice(legitimate_companies[:100] if legitimate_companies else ["XYZ Corp", "ABC Ltd"]),
-            contact=f"{np.random.choice(['9876543210', '8765432109', 'invest@fake.com'])}",
-            upi=f"{np.random.choice(['pay', 'trade', 'invest'])}@{np.random.choice(['okaxis', 'paytm', 'phonepe'])}",
-            amount=np.random.choice([999, 1999, 4999, 9999]),
-            reg_no=f"INH{np.random.randint(100000, 999999)}"
-        )
-        
-        # Add spam characteristics
-        if np.random.random() < 0.3:
-            text += "!!!"
-        if np.random.random() < 0.2:
-            text += " HURRY UP!"
-        
-        texts.append(text)
-        labels.append(1)  # Fraudulent
-    
-    # Generate legitimate samples
-    for _ in range(800):
-        pattern = np.random.choice(legit_patterns)
-        
-        text = pattern.format(
-            company=np.random.choice(legitimate_companies[:100] if legitimate_companies else ["Reliance", "TCS"]),
-            reg_no=f"INA{np.random.randint(100000, 999999)}"
-        )
-        
-        texts.append(text)
-        labels.append(0)  # Legitimate
-    
-    # Add samples with SEBI entities (legitimate)
-    for entity in sebi_entities[:100]:
-        texts.append(f"We are {entity}, a SEBI registered investment advisor.")
-        labels.append(0)
-    
-    # Add samples with NSE/BSE companies (legitimate)
-    for company in legitimate_companies[:100]:
-        texts.append(f"Invest in {company} for long-term growth. Please consult your advisor.")
-        labels.append(0)
-    
-    return texts, labels
-
-def ensure_training_data():
-    """Generate or load training data"""
+def load_and_prepare_data():
+    """Load the consolidated training dataset"""
     if not os.path.exists(DATA_PATH):
-        os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-        
-        print("Generating training data with real entity names...")
-        texts, labels = generate_training_data()
-        
-        df = pd.DataFrame({"text": texts, "label": labels})
-        df = df.sample(frac=1).reset_index(drop=True)  # Shuffle
-        df.to_csv(DATA_PATH, index=False)
-        print(f"Generated {len(df)} training samples")
+        raise FileNotFoundError(f"Training data not found at {DATA_PATH}")
     
-    return pd.read_csv(DATA_PATH)
+    print(f"Loading data from: {DATA_PATH}")
+    df = pd.read_csv(DATA_PATH)
+    
+    print(f"Dataset shape: {df.shape}")
+    print(f"Label distribution:\n{df['label'].value_counts()}")
+    print(f"Class balance: {df['label'].value_counts(normalize=True)}")
+    
+    return df
+
+def create_feature_pipeline():
+    """Create optimized feature extraction pipeline"""
+    return TfidfVectorizer(
+        ngram_range=(1, 3),          # Unigrams, bigrams, and trigrams
+        stop_words='english',         # Remove common English stop words
+        min_df=2,                    # Ignore terms that appear in less than 2 documents
+        max_df=0.95,                 # Ignore terms that appear in more than 95% of documents
+        max_features=15000,          # Limit vocabulary size
+        lowercase=True,              # Convert to lowercase
+        strip_accents='unicode',     # Remove accents
+        token_pattern=r'\b[a-zA-Z]{2,}\b',  # Only alphabetic tokens with 2+ chars
+        sublinear_tf=True            # Apply sublinear tf scaling
+    )
+
+def evaluate_models(X_train, X_test, y_train, y_test, tfidf):
+    """Evaluate multiple models and return the best one"""
+    
+    models = {
+        'Random Forest': RandomForestClassifier(
+            n_estimators=200,
+            max_depth=15,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            class_weight='balanced',
+            n_jobs=-1
+        ),
+        'Gradient Boosting': GradientBoostingClassifier(
+            n_estimators=100,
+            learning_rate=0.1,
+            max_depth=10,
+            random_state=42,
+            subsample=0.8
+        ),
+        'Logistic Regression': LogisticRegression(
+            C=1.0,
+            random_state=42,
+            class_weight='balanced',
+            max_iter=1000,
+            solver='liblinear'
+        ),
+        'SVM': SVC(
+            C=1.0,
+            kernel='linear',
+            random_state=42,
+            class_weight='balanced',
+            probability=True
+        )
+    }
+    
+    best_model = None
+    best_score = 0
+    best_name = ""
+    results = {}
+    
+    print("Evaluating models:")
+    print("-" * 50)
+    
+    for name, model in models.items():
+        # Create pipeline
+        pipe = Pipeline([
+            ('tfidf', tfidf),
+            ('classifier', model)
+        ])
+        
+        # Train model
+        pipe.fit(X_train, y_train)
+        
+        # Evaluate
+        train_score = pipe.score(X_train, y_train)
+        test_score = pipe.score(X_test, y_test)
+        
+        # Cross-validation
+        cv_scores = cross_val_score(pipe, X_train, y_train, cv=5, scoring='f1')
+        
+        # ROC-AUC
+        y_prob = pipe.predict_proba(X_test)[:, 1]
+        roc_auc = roc_auc_score(y_test, y_prob)
+        
+        results[name] = {
+            'train_acc': train_score,
+            'test_acc': test_score,
+            'cv_f1_mean': cv_scores.mean(),
+            'cv_f1_std': cv_scores.std(),
+            'roc_auc': roc_auc,
+            'model': pipe
+        }
+        
+        print(f"{name}:")
+        print(f"  Train Accuracy: {train_score:.4f}")
+        print(f"  Test Accuracy: {test_score:.4f}")
+        print(f"  CV F1 Score: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+        print(f"  ROC-AUC: {roc_auc:.4f}")
+        print()
+        
+        # Select best model based on CV F1 score
+        if cv_scores.mean() > best_score:
+            best_score = cv_scores.mean()
+            best_model = pipe
+            best_name = name
+    
+    print(f"Best model: {best_name} (CV F1: {best_score:.4f})")
+    return best_model, best_name, results
+
+def hyperparameter_tuning(X_train, y_train):
+    """Perform hyperparameter tuning for Random Forest"""
+    print("Performing hyperparameter tuning...")
+    
+    param_grid = {
+        'classifier__n_estimators': [100, 200, 300],
+        'classifier__max_depth': [10, 15, 20],
+        'classifier__min_samples_split': [2, 5, 10],
+        'classifier__min_samples_leaf': [1, 2, 4]
+    }
+    
+    pipe = Pipeline([
+        ('tfidf', create_feature_pipeline()),
+        ('classifier', RandomForestClassifier(random_state=42, class_weight='balanced', n_jobs=-1))
+    ])
+    
+    grid_search = GridSearchCV(
+        pipe, 
+        param_grid, 
+        cv=3, 
+        scoring='f1',
+        n_jobs=-1,
+        verbose=1
+    )
+    
+    grid_search.fit(X_train, y_train)
+    
+    print(f"Best parameters: {grid_search.best_params_}")
+    print(f"Best CV score: {grid_search.best_score_:.4f}")
+    
+    return grid_search.best_estimator_
+
+def analyze_features(model, feature_names, top_n=20):
+    """Analyze top features for fraud detection"""
+    if hasattr(model.named_steps['classifier'], 'feature_importances_'):
+        importances = model.named_steps['classifier'].feature_importances_
+        indices = np.argsort(importances)[::-1]
+        
+        print(f"\nTop {top_n} most important features:")
+        print("-" * 50)
+        for i in range(min(top_n, len(indices))):
+            idx = indices[i]
+            print(f"{i+1:2d}. {feature_names[idx]:30s} {importances[idx]:.4f}")
+
+def test_sample_predictions(model):
+    """Test model with sample predictions"""
+    test_samples = [
+        "SEBI registered investment advisor. Mutual funds subject to market risks",
+        "Guaranteed 25% returns in 2 weeks! Join our Telegram group",
+        "ICICI Securities - diversified equity investments for long-term goals",
+        "Pre-IPO shares available! Send money to paytm@insider immediately",
+        "Systematic investment in mutual funds helps achieve financial goals",
+        "URGENT: 300% returns in 3 days confirmed. Send money now!",
+        "Angel One Limited - SEBI registered broker providing research reports",
+        "Risk-free trading! Our AI guarantees 50% daily returns",
+        "Past performance is not indicative of future returns",
+        "BREAKING: Secret billionaire strategy revealed! 500% returns guaranteed!"
+    ]
+    
+    print("\nSample Predictions:")
+    print("-" * 70)
+    
+    for text in test_samples:
+        prob = model.predict_proba([text])[0]
+        prediction = "FRAUDULENT" if prob[1] > 0.5 else "LEGITIMATE"
+        confidence = max(prob) * 100
+        
+        print(f"Text: {text[:50]}...")
+        print(f"Prediction: {prediction} (Confidence: {confidence:.1f}%)")
+        print(f"Fraud probability: {prob[1]:.3f}")
+        print("-" * 70)
 
 def main():
-    # Generate training data
-    df = ensure_training_data()
+    print("Financial Advice Fraud Detection Model Training")
+    print("=" * 60)
     
-    print(f"Training data shape: {df.shape}")
-    print(f"Label distribution:\n{df['label'].value_counts()}")
+    # Load data
+    df = load_and_prepare_data()
     
-    # Prepare data
-    X = df["text"].fillna("")
-    y = df["label"].astype(int)
+    # Prepare features and labels
+    X = df['text'].fillna("").astype(str)
+    y = df['label'].astype(int)
     
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
     
-    # Create pipeline with better feature extraction
-    pipe = Pipeline([
-        ("tfidf", TfidfVectorizer(
-            ngram_range=(1, 3),
-            stop_words="english",
-            min_df=2,
-            max_df=0.95,
-            max_features=10000,
-            lowercase=True,
-            strip_accents='unicode'
-        )),
-        ("clf", RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            random_state=42,
-            class_weight='balanced'
-        ))
-    ])
+    print(f"\nTraining set size: {len(X_train)}")
+    print(f"Test set size: {len(X_test)}")
     
-    # Train model
-    print("Training model...")
-    pipe.fit(X_train, y_train)
+    # Create feature pipeline
+    tfidf = create_feature_pipeline()
     
-    # Evaluate model
-    train_score = pipe.score(X_train, y_train)
-    test_score = pipe.score(X_test, y_test)
+    # Evaluate multiple models
+    best_model, best_name, results = evaluate_models(X_train, X_test, y_train, y_test, tfidf)
     
-    print(f"Training accuracy: {train_score:.3f}")
-    print(f"Test accuracy: {test_score:.3f}")
+    # Optional: Hyperparameter tuning for Random Forest
+    if best_name == 'Random Forest':
+        print("\nPerforming hyperparameter tuning for Random Forest...")
+        tuned_model = hyperparameter_tuning(X_train, y_train)
+        
+        # Compare tuned model
+        tuned_score = tuned_model.score(X_test, y_test)
+        original_score = best_model.score(X_test, y_test)
+        
+        if tuned_score > original_score:
+            print(f"Tuned model performs better: {tuned_score:.4f} vs {original_score:.4f}")
+            best_model = tuned_model
+        else:
+            print(f"Original model performs better: {original_score:.4f} vs {tuned_score:.4f}")
     
-    # Detailed evaluation
-    y_pred = pipe.predict(X_test)
-    print("\nClassification Report:")
+    # Final evaluation
+    y_pred = best_model.predict(X_test)
+    y_prob = best_model.predict_proba(X_test)[:, 1]
+    
+    print(f"\nFinal Model Performance ({best_name}):")
+    print("=" * 40)
+    print(f"Test Accuracy: {best_model.score(X_test, y_test):.4f}")
+    print(f"ROC-AUC Score: {roc_auc_score(y_test, y_prob):.4f}")
+    
+    print("\nDetailed Classification Report:")
     print(classification_report(y_test, y_pred, target_names=['Legitimate', 'Fraudulent']))
+    
+    print("\nConfusion Matrix:")
+    cm = confusion_matrix(y_test, y_pred)
+    print(f"True Negatives: {cm[0,0]}, False Positives: {cm[0,1]}")
+    print(f"False Negatives: {cm[1,0]}, True Positives: {cm[1,1]}")
+    
+    # Feature analysis
+    feature_names = best_model.named_steps['tfidf'].get_feature_names_out()
+    analyze_features(best_model, feature_names)
     
     # Save model
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    joblib.dump(pipe, MODEL_PATH)
-    print(f"Model saved to {MODEL_PATH}")
+    joblib.dump(best_model, MODEL_PATH)
+    print(f"\nModel saved to: {MODEL_PATH}")
     
-    # Test with sample texts
-    test_samples = [
-        "Guaranteed 25% returns in 2 weeks! Join our Telegram group",
-        "SEBI registered investment advisor. Mutual funds subject to market risks",
-        "Pre-IPO shares available! Send money to pay@paytm immediately",
-        "Systematic investment in equity mutual funds for long-term goals"
-    ]
+    # Test sample predictions
+    test_sample_predictions(best_model)
     
-    print("\nSample predictions:")
-    for text in test_samples:
-        prob = pipe.predict_proba([text])[0][1]
-        prediction = "Fraudulent" if prob > 0.5 else "Legitimate"
-        print(f"Text: {text[:50]}...")
-        print(f"Fraud probability: {prob:.3f} ({prediction})\n")
+    print(f"\nTraining completed successfully!")
+    print(f"Model type: {best_name}")
+    print(f"Features: {len(feature_names)}")
+    print(f"Training samples: {len(X_train)}")
 
 if __name__ == "__main__":
     main()

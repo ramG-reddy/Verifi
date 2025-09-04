@@ -2,176 +2,220 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import joblib
 import os
-import pandas as pd
 import re
-from typing import Dict, List
+from typing import List
 
-MODEL_PATH = os.environ.get("ML_MODEL_PATH", "/app/models/model.joblib")
-# NSE_DATA = os.environ.get("NSE_DATA", "/data/NSE_COMPANIES.csv")
-# BSE_DATA = os.environ.get("BSE_DATA", "/data/BSE_COMPANIES.csv")
+MODEL_PATH = os.environ.get("ML_MODEL_PATH", os.path.join(os.path.dirname(__file__), "model.joblib"))
 
-app = FastAPI(title="Financial Fraud Detection API")
+app = FastAPI(
+    title="Financial Fraud Detection API",
+    description="API for detecting fraudulent financial advice using ML",
+    version="1.0.0"
+)
 
-# Global variables for model and company data
-pipe = None
-# legitimate_companies = set()
+# Global variable for model
+model = None
 
 class ScoreRequest(BaseModel):
     text: str
-
-# class CompanyVerifyRequest(BaseModel):
-#     company_name: str
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group for insider tips."
+            }
+        }
 
 class ScoreResponse(BaseModel):
-    ml_score: float
+    text: str
+    fraud_probability: float
+    prediction: str
+    confidence_level: str
     risk_indicators: List[str]
-
-# def load_legitimate_companies():
-#     """Load legitimate companies from NSE and BSE data"""
-#     companies = set()
     
-#     # Load NSE companies
-#     if os.path.exists(NSE_DATA):
-#         try:
-#             nse_df = pd.read_csv(NSE_DATA)
-#             name_cols = ['COMPANY NAME', 'Company Name', 'NAME OF COMPANY', 'Symbol', 'SYMBOL']
-#             for col in name_cols:
-#                 if col in nse_df.columns:
-#                     companies.update(nse_df[col].dropna().astype(str).str.upper().tolist())
-#                     break
-#             print(f"Loaded {len(companies)} NSE companies")
-#         except Exception as e:
-#             print(f"Error loading NSE data: {e}")
-    
-#     # Load BSE companies
-#     if os.path.exists(BSE_DATA):
-#         try:
-#             bse_df = pd.read_csv(BSE_DATA)
-#             name_cols = ['Security Name', 'Company Name', 'COMPANY NAME', 'Security Id', 'SECURITY_NAME']
-#             for col in name_cols:
-#                 if col in bse_df.columns:
-#                     companies.update(bse_df[col].dropna().astype(str).str.upper().tolist())
-#                     break
-#             print(f"Total companies after BSE: {len(companies)}")
-#         except Exception as e:
-#             print(f"Error loading BSE data: {e}")
-    
-#     return companies
+    class Config:
+        schema_extra = {
+            "example": {
+                "text": "Sample text",
+                "fraud_probability": 0.85,
+                "prediction": "FRAUDULENT",
+                "confidence_level": "HIGH",
+                "risk_indicators": ["Guaranteed returns promised", "Urgency tactics"]
+            }
+        }
 
 def extract_risk_indicators(text: str) -> List[str]:
     """Extract specific risk indicators from text"""
     indicators = []
+    text_lower = text.lower()
     
-    # High return promises
-    if re.search(r'guaranteed|assured|risk.?free', text, re.I):
-        indicators.append("Guaranteed returns promised")
+    # Guaranteed returns and risk-free promises
+    if re.search(r'\b(guaranteed|assured|risk[-\s]?free|100%[-\s]?safe|zero[-\s]?risk)\b', text_lower):
+        indicators.append("Guaranteed/risk-free returns promised")
     
-    # Urgency tactics
-    if re.search(r'urgent|hurry|limited time|last chance|act now', text, re.I):
-        indicators.append("Urgency tactics")
+    # Urgency and pressure tactics
+    if re.search(r'\b(urgent|hurry|limited[-\s]?time|last[-\s]?chance|act[-\s]?now|immediate|today[-\s]?only|expires)\b', text_lower):
+        indicators.append("Urgency and pressure tactics")
     
-    # Suspicious contact methods
-    if re.search(r'telegram|whatsapp|join.+group', text, re.I):
+    # Suspicious communication channels
+    if re.search(r'\b(telegram|whatsapp|join[-\s]?group|premium[-\s]?group|vip[-\s]?group)\b', text_lower):
         indicators.append("Suspicious communication channels")
     
-    # Payment requests
-    if re.search(r'send money|pay.+@|upi|processing fee', text, re.I):
+    # Direct payment requests
+    if re.search(r'\b(send[-\s]?money|pay[-\s]?now|processing[-\s]?fee|registration[-\s]?fee|@paytm|@phonepe|@upi)\b', text_lower):
         indicators.append("Direct payment requests")
     
-    # Pre-IPO schemes
-    if re.search(r'pre.?ipo|insider|exclusive allocation', text, re.I):
+    # Pre-IPO and insider trading claims
+    if re.search(r'\b(pre[-\s]?ipo|insider[-\s]?(trading|tips|information)|exclusive[-\s]?allocation|secret[-\s]?(tips|formula))\b', text_lower):
         indicators.append("Pre-IPO or insider trading claims")
     
-    # High percentage returns
-    returns = re.findall(r'(\d+)%', text)
-    if returns and any(int(r) > 15 for r in returns):
-        indicators.append("Unrealistic return percentages")
+    # Unrealistic return percentages (>20% in short timeframe)
+    high_returns = re.findall(r'(\d+)%', text)
+    if high_returns and any(int(r) > 20 for r in high_returns if r.isdigit()):
+        max_return = max(int(r) for r in high_returns if r.isdigit())
+        indicators.append(f"Unrealistic return percentage ({max_return}%)")
+    
+    # Short timeframe promises
+    if re.search(r'\b(daily|24[-\s]?hours?|1[-\s]?week|2[-\s]?weeks?|few[-\s]?days)\b.*\b(profit|returns?|money)\b', text_lower):
+        indicators.append("Short-term high return promises")
+    
+    # Celebrity or authority false endorsements
+    if re.search(r'\b(warren[-\s]?buffett|rbi[-\s]?governor|sebi[-\s]?insider|government[-\s]?scheme)\b', text_lower):
+        indicators.append("False authority endorsements")
+    
+    # Get-rich-quick schemes
+    if re.search(r'\b(get[-\s]?rich[-\s]?quick|become[-\s]?millionaire|double[-\s]?money|money[-\s]?doubling)\b', text_lower):
+        indicators.append("Get-rich-quick scheme indicators")
     
     return indicators
 
-@app.on_event("startup")
-def load_models():
-    global pipe
-    # global legitimate_companies
-    
-    # Load ML model
-    if os.path.exists(MODEL_PATH):
-        pipe = joblib.load(MODEL_PATH)
-        print("ML model loaded successfully")
+def get_confidence_level(probability: float) -> str:
+    """Determine confidence level based on probability"""
+    if probability > 0.8:
+        return "HIGH"
+    elif probability > 0.6:
+        return "MEDIUM"
+    elif probability > 0.4:
+        return "LOW"
     else:
-        print("ML model not found")
-    
-    # # Load company data
-    # legitimate_companies = load_legitimate_companies()
-    # print(f"Loaded {len(legitimate_companies)} legitimate companies")
+        return "VERY_LOW"
 
-@app.post("/score", response_model=ScoreResponse)
-def score_text(req: ScoreRequest):
-    global pipe
-    
-    if pipe is None:
-        raise HTTPException(status_code=503, detail="ML model not available")
+def get_prediction_label(probability: float) -> str:
+    """Get prediction label based on probability"""
+    return "FRAUDULENT" if probability > 0.5 else "LEGITIMATE"
+
+@app.on_event("startup")
+async def load_model():
+    """Load the ML model on startup"""
+    global model
     
     try:
-        # Get ML prediction
-        probabilities = pipe.predict_proba([req.text])[0]
-        fraud_probability = float(probabilities[1])
+        if os.path.exists(MODEL_PATH):
+            model = joblib.load(MODEL_PATH)
+            print(f"✅ Model loaded successfully from: {MODEL_PATH}")
+        else:
+            print(f"❌ Model file not found at: {MODEL_PATH}")
+            raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+    except Exception as e:
+        print(f"❌ Error loading model: {str(e)}")
+        raise
+
+@app.post("/score", response_model=ScoreResponse)
+async def score_text(request: ScoreRequest):
+    """Score text for fraud probability"""
+    global model
+    
+    if model is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="ML model not available. Please check server logs."
+        )
+    
+    try:
+        # Input validation
+        if not request.text or not request.text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Text input cannot be empty"
+            )
         
-        # # Determine confidence level
-        # if fraud_probability > 0.8:
-        #     confidence = "high"
-        # elif fraud_probability > 0.6:
-        #     confidence = "medium"
-        # elif fraud_probability > 0.4:
-        #     confidence = "low"
-        # else:
-        #     confidence = "very_low"
+        # Get ML prediction
+        probabilities = model.predict_proba([request.text])[0]
+        fraud_probability = float(probabilities[1])  # Probability of fraud (class 1)
+        
+        # Get prediction and confidence
+        prediction = get_prediction_label(fraud_probability)
+        confidence_level = get_confidence_level(fraud_probability)
         
         # Extract risk indicators
-        risk_indicators = extract_risk_indicators(req.text)
+        risk_indicators = extract_risk_indicators(request.text)
         
         return ScoreResponse(
-            ml_score=fraud_probability,
-            # confidence=confidence,
+            text=request.text[:100] + "..." if len(request.text) > 100 else request.text,
+            fraud_probability=round(fraud_probability, 4),
+            prediction=prediction,
+            confidence_level=confidence_level,
             risk_indicators=risk_indicators
         )
     
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
-
-# @app.post("/verify_company")
-# def verify_company(req: CompanyVerifyRequest):
-#     """Verify if a company is listed on NSE/BSE"""
-#     company_upper = req.company_name.upper().strip()
-    
-#     # Direct match
-#     if company_upper in legitimate_companies:
-#         return {"verified": True, "match_type": "exact", "company_name": req.company_name}
-    
-#     # Partial match
-#     partial_matches = [comp for comp in legitimate_companies if company_upper in comp or comp in company_upper]
-    
-#     if partial_matches:
-#         return {
-#             "verified": True, 
-#             "match_type": "partial", 
-#             "company_name": req.company_name,
-#             "possible_matches": partial_matches[:5]
-#         }
-    
-#     return {"verified": False, "match_type": "none", "company_name": req.company_name}
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error during prediction: {str(e)}"
+        )
 
 @app.get("/health")
-def health_check():
+async def health_check():
+    """Health check endpoint"""
     return {
-        "status": "working...",
-        "model_loaded": pipe is not None,
-        # "companies_loaded": len(legitimate_companies)
+        "status": "healthy" if model is not None else "unhealthy",
+        "service": "Financial Fraud Detection API",
+        "model_loaded": model is not None,
+        "version": "1.0.0"
     }
 
-# @app.get("/stats")
-# def get_stats():
-#     return {
-#         "legitimate_companies_count": len(legitimate_companies),
-#         "model_available": pipe is not None
-#     }
+@app.get("/model-info")
+async def get_model_info():
+    """Get information about the loaded model"""
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    try:
+        # Get model type
+        model_type = type(model.named_steps['classifier']).__name__
+        
+        # Get feature count
+        feature_count = len(model.named_steps['tfidf'].get_feature_names_out())
+        
+        return {
+            "model_type": model_type,
+            "feature_count": feature_count,
+            "pipeline_steps": list(model.named_steps.keys()),
+            "model_path": MODEL_PATH
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting model info: {str(e)}"
+        )
+
+@app.get("/")
+async def root():
+    """Root endpoint with API information"""
+    return {
+        "message": "Financial Fraud Detection API",
+        "docs": "/docs",
+        "health": "/health",
+        "version": "1.0.0"
+    }
+
+# Add error handlers
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    return {"error": "Endpoint not found", "available_endpoints": ["/", "/docs", "/health", "/score", "/model-info"]}
+
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    return {"error": "Internal server error", "message": "Please check server logs for details"}
