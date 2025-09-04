@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!company) {
       return NextResponse.json({
         exists: false,
-        error: 'Company with this registration ID not found'
+        error: 'Company with this registration ID not found in our records'
       });
     }
     

@@ -66,9 +66,7 @@ export default function VerifyCompanyPage() {
         <div className="text-center mb-8 max-w-2xl">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mr-4">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zM3 15a1 1 0 011-1h1a1 1 0 011 1v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-1zm6-11a1 1 0 011-1h4a1 1 0 011 1v1a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zm6 6a1 1 0 011-1h1a1 1 0 011 1v4a1 1 0 01-1 1h-1a1 1 0 01-1-1v-4zm-3 2a1 1 0 011-1h1a1 1 0 011 1v2a1 1 0 01-1 1h-1a1 1 0 01-1-1v-2z" clipRule="evenodd" />
-              </svg>
+              🏢
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Verify Company</h1>
           </div>
@@ -139,8 +137,8 @@ export default function VerifyCompanyPage() {
             <div className="mt-8 p-6 bg-gray-50 rounded-lg">
               {'error' in result && result.error ? (
                 <div className="text-red-600 text-center">
-                  <p className="font-medium">Error</p>
-                  <p className="text-sm">{result.error}</p>
+                  <span className="font-medium px-4 py-2 bg-red-200 rounded-2xl">Not Found</span>
+                  <p className="text-sm mt-2">{result.error}</p>
                 </div>
               ) : (
                 <div className="space-y-4">

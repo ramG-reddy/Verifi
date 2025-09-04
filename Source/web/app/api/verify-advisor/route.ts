@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!advisor) {
       return NextResponse.json({
         exists: false,
-        error: 'Advisor with this registration ID not found'
+        error: 'Advisor with this registration ID not found in our records'
       });
     }
     

@@ -9,4 +9,4 @@ if [ ! -f "$ml_path" ]; then
 fi
 
 
-uvicorn app:app --host 0.0.0.0 --port 8001
+exec uvicorn app:app --host 0.0.0.0 --port 8001

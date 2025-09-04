@@ -139,8 +139,8 @@ export default function VerifyAdvisorPage() {
             <div className="mt-8 p-6 bg-gray-50 rounded-lg">
               {'error' in result && result.error ? (
                 <div className="text-red-600 text-center">
-                  <p className="font-medium">Error</p>
-                  <p className="text-sm">{result.error}</p>
+                  <span className="font-medium px-4 py-2 bg-red-200 rounded-2xl">Not Found</span>
+                  <p className="text-sm mt-4">{result.error}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
