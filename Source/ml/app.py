@@ -3,7 +3,8 @@ from pydantic import BaseModel
 import joblib
 import os
 import re
-from typing import List
+import pandas as pd
+from typing import List, Optional
 
 MODEL_PATH = os.environ.get("ML_MODEL_PATH", os.path.join(os.path.dirname(__file__), "model.joblib"))
 
@@ -18,34 +19,82 @@ model = None
 
 class ScoreRequest(BaseModel):
     text: str
+    returns_percentage: Optional[int] = None
+    timeframe: Optional[str] = None
     
     class Config:
         schema_extra = {
             "example": {
-                "text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group for insider tips."
+                "text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group for insider tips.",
+                "returns_percentage": 25,
+                "timeframe": "2 weeks"
             }
         }
 
 class ScoreResponse(BaseModel):
-    text: str
+    # text: str
     fraud_probability: float
     prediction: str
     confidence_level: str
     risk_indicators: List[str]
+    # extracted_returns: Optional[int] = None
+    # extracted_timeframe: Optional[str] = None
     
     class Config:
         schema_extra = {
             "example": {
-                "text": "Sample text",
+                # "text": "Sample text",
                 "fraud_probability": 0.85,
                 "prediction": "FRAUDULENT",
                 "confidence_level": "HIGH",
-                "risk_indicators": ["Guaranteed returns promised", "Urgency tactics"]
+                "risk_indicators": ["Guaranteed returns promised", "Urgency tactics"],
+                # "extracted_returns": 25,
+                # "extracted_timeframe": "2 weeks"
             }
         }
 
-def extract_risk_indicators(text: str) -> List[str]:
-    """Extract specific risk indicators from text"""
+def extract_returns_and_timeframe(text: str) -> tuple:
+    """Extract returns percentage and timeframe from text"""
+    text_lower = text.lower()
+    
+    # Extract return percentages
+    returns_matches = re.findall(r'(\d+)%', text)
+    extracted_returns = None
+    if returns_matches:
+        # Take the highest percentage mentioned
+        extracted_returns = max(int(r) for r in returns_matches if r.isdigit())
+    
+    # Extract timeframes
+    extracted_timeframe = None
+    timeframe_patterns = [
+        (r'\b(\d+)\s*hours?\b', 'hours'),
+        (r'\b(\d+)\s*days?\b', 'days'),
+        (r'\b(\d+)\s*weeks?\b', 'weeks'),
+        (r'\b(\d+)\s*months?\b', 'months'),
+        (r'\b(\d+)\s*years?\b', 'years'),
+        (r'\bdaily\b', 'daily'),
+        (r'\bweekly\b', 'weekly'),
+        (r'\bmonthly\b', 'monthly'),
+        (r'\bannual(?:ly)?\b', 'annual'),
+        (r'\b24\s*hours?\b', '24 hours'),
+        (r'\b48\s*hours?\b', '48 hours'),
+        (r'\bovernight\b', 'overnight'),
+        (r'\bimmediate(?:ly)?\b', 'immediate')
+    ]
+    
+    for pattern, timeframe_type in timeframe_patterns:
+        match = re.search(pattern, text_lower)
+        if match:
+            if timeframe_type in ['hours', 'days', 'weeks', 'months', 'years']:
+                extracted_timeframe = f"{match.group(1)} {timeframe_type}"
+            else:
+                extracted_timeframe = timeframe_type
+            break
+    
+    return extracted_returns, extracted_timeframe
+
+def extract_risk_indicators(text: str, returns_percentage: Optional[int] = None, timeframe: Optional[str] = None) -> List[str]:
+    """Extract specific risk indicators from text and additional fields"""
     indicators = []
     text_lower = text.lower()
     
@@ -70,14 +119,27 @@ def extract_risk_indicators(text: str) -> List[str]:
         indicators.append("Pre-IPO or insider trading claims")
     
     # Unrealistic return percentages (>20% in short timeframe)
-    high_returns = re.findall(r'(\d+)%', text)
-    if high_returns and any(int(r) > 20 for r in high_returns if r.isdigit()):
-        max_return = max(int(r) for r in high_returns if r.isdigit())
-        indicators.append(f"Unrealistic return percentage ({max_return}%)")
+    if returns_percentage:
+        if returns_percentage > 50:
+            indicators.append(f"Extremely unrealistic return percentage ({returns_percentage}%)")
+        elif returns_percentage > 20:
+            indicators.append(f"Unrealistic return percentage ({returns_percentage}%)")
     
     # Short timeframe promises
     if re.search(r'\b(daily|24[-\s]?hours?|1[-\s]?week|2[-\s]?weeks?|few[-\s]?days)\b.*\b(profit|returns?|money)\b', text_lower):
         indicators.append("Short-term high return promises")
+    
+    # Timeframe-based risk analysis
+    if timeframe:
+        timeframe_lower = timeframe.lower()
+        high_risk_timeframes = ['daily', 'hours', '24 hours', '48 hours', 'overnight', 'immediate']
+        if any(risk_tf in timeframe_lower for risk_tf in high_risk_timeframes):
+            indicators.append(f"Suspicious short timeframe ({timeframe})")
+        
+        # Check for unrealistic returns in short timeframes
+        if returns_percentage and returns_percentage > 10:
+            if any(risk_tf in timeframe_lower for risk_tf in ['daily', 'hours', 'overnight']):
+                indicators.append("High returns promised in very short timeframe")
     
     # Celebrity or authority false endorsements
     if re.search(r'\b(warren[-\s]?buffett|rbi[-\s]?governor|sebi[-\s]?insider|government[-\s]?scheme)\b', text_lower):
@@ -122,7 +184,7 @@ async def load_model():
 
 @app.post("/score", response_model=ScoreResponse)
 async def score_text(request: ScoreRequest):
-    """Score text for fraud probability"""
+    """Score text for fraud probability with enhanced feature extraction"""
     global model
     
     if model is None:
@@ -139,23 +201,39 @@ async def score_text(request: ScoreRequest):
                 detail="Text input cannot be empty"
             )
         
+        # Extract returns and timeframe from text if not provided
+        extracted_returns, extracted_timeframe = extract_returns_and_timeframe(request.text)
+        
+        # Use provided values or extracted ones
+        returns_percentage = request.returns_percentage or extracted_returns or 0
+        timeframe = request.timeframe or extracted_timeframe or 'unknown'
+        
+        # Prepare input data for model
+        input_data = pd.DataFrame([{
+            'text': request.text,
+            'returns_percentage': returns_percentage,
+            'timeframe': timeframe
+        }])
+        
         # Get ML prediction
-        probabilities = model.predict_proba([request.text])[0]
+        probabilities = model.predict_proba(input_data)[0]
         fraud_probability = float(probabilities[1])  # Probability of fraud (class 1)
         
         # Get prediction and confidence
         prediction = get_prediction_label(fraud_probability)
         confidence_level = get_confidence_level(fraud_probability)
         
-        # Extract risk indicators
-        risk_indicators = extract_risk_indicators(request.text)
+        # Extract risk indicators with enhanced analysis
+        risk_indicators = extract_risk_indicators(request.text, returns_percentage, timeframe)
         
         return ScoreResponse(
-            text=request.text[:100] + "..." if len(request.text) > 100 else request.text,
+            # text=request.text[:100] + "..." if len(request.text) > 100 else request.text,
             fraud_probability=round(fraud_probability, 4),
             prediction=prediction,
             confidence_level=confidence_level,
-            risk_indicators=risk_indicators
+            risk_indicators=risk_indicators,
+            # extracted_returns=extracted_returns,
+            # extracted_timeframe=extracted_timeframe
         )
     
     except HTTPException:

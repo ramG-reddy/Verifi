@@ -6,6 +6,8 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 import warnings
 warnings.filterwarnings('ignore')
@@ -15,35 +17,53 @@ DATA_PATH = os.environ.get("TRAIN_DATA", os.path.join(os.path.dirname(__file__),
 MODEL_PATH = os.environ.get("ML_MODEL_PATH", os.path.join(os.path.dirname(__file__), "model.joblib"))
 
 def load_and_prepare_data():
-    """Load the consolidated training dataset"""
+    """Load the consolidated training dataset with new fields"""
     if not os.path.exists(DATA_PATH):
         raise FileNotFoundError(f"Training data not found at {DATA_PATH}")
     
     print(f"Loading data from: {DATA_PATH}")
     df = pd.read_csv(DATA_PATH)
     
+    # Handle missing values for new fields
+    df['returns_percentage'] = df['returns_percentage'].fillna(0)
+    df['timeframe'] = df['timeframe'].fillna('unknown')
+    
     print(f"Dataset shape: {df.shape}")
     print(f"Label distribution:\n{df['label'].value_counts()}")
     print(f"Class balance: {df['label'].value_counts(normalize=True)}")
+    print(f"Returns percentage range: {df['returns_percentage'].min()} - {df['returns_percentage'].max()}")
+    print(f"Timeframe categories: {df['timeframe'].value_counts()}")
     
     return df
 
 def create_feature_pipeline():
-    """Create optimized feature extraction pipeline"""
-    return TfidfVectorizer(
-        ngram_range=(1, 3),          # Unigrams, bigrams, and trigrams
-        stop_words='english',         # Remove common English stop words
-        min_df=2,                    # Ignore terms that appear in less than 2 documents
-        max_df=0.95,                 # Ignore terms that appear in more than 95% of documents
-        max_features=15000,          # Limit vocabulary size
-        lowercase=True,              # Convert to lowercase
-        strip_accents='unicode',     # Remove accents
-        token_pattern=r'\b[a-zA-Z]{2,}\b',  # Only alphabetic tokens with 2+ chars
-        sublinear_tf=True            # Apply sublinear tf scaling
+    """Create comprehensive feature extraction pipeline including new fields"""
+    text_pipeline = TfidfVectorizer(
+        ngram_range=(1, 3),
+        stop_words='english',
+        min_df=2,
+        max_df=0.95,
+        max_features=15000,
+        lowercase=True,
+        strip_accents='unicode',
+        token_pattern=r'\b[a-zA-Z]{2,}\b',
+        sublinear_tf=True
     )
+    
+    # Create preprocessor for combining text and numerical/categorical features
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('text', text_pipeline, 'text'),
+            ('returns', StandardScaler(), ['returns_percentage']),
+            ('timeframe', OneHotEncoder(handle_unknown='ignore'), ['timeframe'])
+        ],
+        remainder='drop'
+    )
+    
+    return preprocessor
 
-def evaluate_models(X_train, X_test, y_train, y_test, tfidf):
-    """Evaluate multiple models and return the best one"""
+def evaluate_models(X_train, X_test, y_train, y_test, preprocessor):
+    """Evaluate multiple models with enhanced feature set"""
     
     models = {
         'Random Forest': RandomForestClassifier(
@@ -87,9 +107,9 @@ def evaluate_models(X_train, X_test, y_train, y_test, tfidf):
     print("-" * 50)
     
     for name, model in models.items():
-        # Create pipeline
+        # Create pipeline with new preprocessor
         pipe = Pipeline([
-            ('tfidf', tfidf),
+            ('preprocessor', preprocessor),
             ('classifier', model)
         ])
         
@@ -133,7 +153,7 @@ def evaluate_models(X_train, X_test, y_train, y_test, tfidf):
     return best_model, best_name, results
 
 def hyperparameter_tuning(X_train, y_train):
-    """Perform hyperparameter tuning for Random Forest"""
+    """Perform hyperparameter tuning for Random Forest with new features"""
     print("Performing hyperparameter tuning...")
     
     param_grid = {
@@ -144,7 +164,7 @@ def hyperparameter_tuning(X_train, y_train):
     }
     
     pipe = Pipeline([
-        ('tfidf', create_feature_pipeline()),
+        ('preprocessor', create_feature_pipeline()),
         ('classifier', RandomForestClassifier(random_state=42, class_weight='balanced', n_jobs=-1))
     ])
     
@@ -164,58 +184,73 @@ def hyperparameter_tuning(X_train, y_train):
     
     return grid_search.best_estimator_
 
-def analyze_features(model, feature_names, top_n=20):
-    """Analyze top features for fraud detection"""
+def analyze_features(model, top_n=20):
+    """Analyze top features for fraud detection including new fields"""
     if hasattr(model.named_steps['classifier'], 'feature_importances_'):
         importances = model.named_steps['classifier'].feature_importances_
+        
+        # Get feature names from preprocessor
+        try:
+            feature_names = (
+                model.named_steps['preprocessor']
+                .named_transformers_['text']
+                .get_feature_names_out().tolist() +
+                ['returns_percentage'] +
+                model.named_steps['preprocessor']
+                .named_transformers_['timeframe']
+                .get_feature_names_out().tolist()
+            )
+        except:
+            print("Could not extract feature names for analysis")
+            return
+        
         indices = np.argsort(importances)[::-1]
         
         print(f"\nTop {top_n} most important features:")
-        print("-" * 50)
+        print("-" * 70)
         for i in range(min(top_n, len(indices))):
             idx = indices[i]
-            print(f"{i+1:2d}. {feature_names[idx]:30s} {importances[idx]:.4f}")
+            feature_name = feature_names[idx] if idx < len(feature_names) else f"feature_{idx}"
+            print(f"{i+1:2d}. {feature_name:40s} {importances[idx]:.4f}")
 
 def test_sample_predictions(model):
-    """Test model with sample predictions"""
-    test_samples = [
-        "SEBI registered investment advisor. Mutual funds subject to market risks",
-        "Guaranteed 25% returns in 2 weeks! Join our Telegram group",
-        "ICICI Securities - diversified equity investments for long-term goals",
-        "Pre-IPO shares available! Send money to paytm@insider immediately",
-        "Systematic investment in mutual funds helps achieve financial goals",
-        "URGENT: 300% returns in 3 days confirmed. Send money now!",
-        "Angel One Limited - SEBI registered broker providing research reports",
-        "Risk-free trading! Our AI guarantees 50% daily returns",
-        "Past performance is not indicative of future returns",
-        "BREAKING: Secret billionaire strategy revealed! 500% returns guaranteed!"
-    ]
+    """Test model with sample predictions including new fields"""
+    test_samples = pd.DataFrame([
+        {"text": "SEBI registered investment advisor. Mutual funds subject to market risks", "returns_percentage": 0, "timeframe": "unknown"},
+        {"text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group", "returns_percentage": 25, "timeframe": "2 weeks"},
+        {"text": "ICICI Securities - diversified equity investments for long-term goals", "returns_percentage": 12, "timeframe": "annual"},
+        {"text": "Pre-IPO shares available! Send money to paytm@insider immediately", "returns_percentage": 300, "timeframe": "1 month"},
+        {"text": "Systematic investment in mutual funds helps achieve financial goals", "returns_percentage": 10, "timeframe": "annual"},
+        {"text": "URGENT: 300% returns in 3 days confirmed. Send money now!", "returns_percentage": 300, "timeframe": "3 days"},
+        {"text": "Angel One Limited - SEBI registered broker providing research reports", "returns_percentage": 0, "timeframe": "unknown"},
+        {"text": "Risk-free trading! Our AI guarantees 50% daily returns", "returns_percentage": 50, "timeframe": "daily"},
+        {"text": "Past performance is not indicative of future returns", "returns_percentage": 0, "timeframe": "unknown"},
+        {"text": "BREAKING: Secret billionaire strategy revealed! 500% returns guaranteed!", "returns_percentage": 500, "timeframe": "monthly"}
+    ])
     
     print("\nSample Predictions:")
-    print("-" * 70)
+    print("-" * 100)
     
-    for text in test_samples:
-        prob = model.predict_proba([text])[0]
+    for _, row in test_samples.iterrows():
+        prob = model.predict_proba(row.to_frame().T)[0]
         prediction = "FRAUDULENT" if prob[1] > 0.5 else "LEGITIMATE"
         confidence = max(prob) * 100
         
-        print(f"Text: {text[:50]}...")
+        print(f"Text: {row['text'][:50]}...")
+        print(f"Returns: {row['returns_percentage']}%, Timeframe: {row['timeframe']}")
         print(f"Prediction: {prediction} (Confidence: {confidence:.1f}%)")
         print(f"Fraud probability: {prob[1]:.3f}")
-        print("-" * 70)
+        print("-" * 100)
 
 def main():
     print("Financial Advice Fraud Detection Model Training")
     print("=" * 60)
-    
-    # Load data
     df = load_and_prepare_data()
     
-    # Prepare features and labels
-    X = df['text'].fillna("").astype(str)
+    X = df[['text', 'returns_percentage', 'timeframe']].copy()
+    X['text'] = X['text'].fillna("").astype(str)
     y = df['label'].astype(int)
     
-    # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -223,13 +258,9 @@ def main():
     print(f"\nTraining set size: {len(X_train)}")
     print(f"Test set size: {len(X_test)}")
     
-    # Create feature pipeline
-    tfidf = create_feature_pipeline()
+    preprocessor = create_feature_pipeline()
+    best_model, best_name, results = evaluate_models(X_train, X_test, y_train, y_test, preprocessor)
     
-    # Evaluate multiple models
-    best_model, best_name, results = evaluate_models(X_train, X_test, y_train, y_test, tfidf)
-    
-    # Optional: Hyperparameter tuning for Random Forest
     if best_name == 'Random Forest':
         print("\nPerforming hyperparameter tuning for Random Forest...")
         tuned_model = hyperparameter_tuning(X_train, y_train)
@@ -244,7 +275,6 @@ def main():
         else:
             print(f"Original model performs better: {original_score:.4f} vs {tuned_score:.4f}")
     
-    # Final evaluation
     y_pred = best_model.predict(X_test)
     y_prob = best_model.predict_proba(X_test)[:, 1]
     
@@ -261,17 +291,13 @@ def main():
     print(f"True Negatives: {cm[0,0]}, False Positives: {cm[0,1]}")
     print(f"False Negatives: {cm[1,0]}, True Positives: {cm[1,1]}")
     
-    # Feature analysis
-    feature_names = best_model.named_steps['tfidf'].get_feature_names_out()
-    analyze_features(best_model, feature_names)
+    analyze_features(best_model) # Feature analysis with new method
     
-    # Save model
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(best_model, MODEL_PATH)
     print(f"\nModel saved to: {MODEL_PATH}")
     
-    # Test sample predictions
-    test_sample_predictions(best_model)
+    test_sample_predictions(best_model) # Testing sample predictions with new format
     
     print(f"\nTraining completed successfully!")
     print(f"Model type: {best_name}")
