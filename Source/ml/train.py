@@ -23,15 +23,17 @@ def load_and_prepare_data():
     
     print(f"Loading data from: {DATA_PATH}")
     df = pd.read_csv(DATA_PATH)
+
+    print(df.head)
     
     # Handle missing values for new fields
-    df['returns_percentage'] = df['returns_percentage'].fillna(0)
+    df['roi_percentage'] = df['roi_percentage'].fillna(0)
     df['timeframe'] = df['timeframe'].fillna('unknown')
     
     print(f"Dataset shape: {df.shape}")
     print(f"Label distribution:\n{df['label'].value_counts()}")
     print(f"Class balance: {df['label'].value_counts(normalize=True)}")
-    print(f"Returns percentage range: {df['returns_percentage'].min()} - {df['returns_percentage'].max()}")
+    print(f"Returns percentage range: {df['roi_percentage'].min()} - {df['roi_percentage'].max()}")
     print(f"Timeframe categories: {df['timeframe'].value_counts()}")
     
     return df
@@ -54,7 +56,7 @@ def create_feature_pipeline():
     preprocessor = ColumnTransformer(
         transformers=[
             ('text', text_pipeline, 'text'),
-            ('returns', StandardScaler(), ['returns_percentage']),
+            ('returns', StandardScaler(), ['roi_percentage']),
             ('timeframe', OneHotEncoder(handle_unknown='ignore'), ['timeframe'])
         ],
         remainder='drop'
@@ -195,7 +197,7 @@ def analyze_features(model, top_n=20):
                 model.named_steps['preprocessor']
                 .named_transformers_['text']
                 .get_feature_names_out().tolist() +
-                ['returns_percentage'] +
+                ['roi_percentage'] +
                 model.named_steps['preprocessor']
                 .named_transformers_['timeframe']
                 .get_feature_names_out().tolist()
@@ -216,16 +218,16 @@ def analyze_features(model, top_n=20):
 def test_sample_predictions(model):
     """Test model with sample predictions including new fields"""
     test_samples = pd.DataFrame([
-        {"text": "SEBI registered investment advisor. Mutual funds subject to market risks", "returns_percentage": 0, "timeframe": "unknown"},
-        {"text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group", "returns_percentage": 25, "timeframe": "2 weeks"},
-        {"text": "ICICI Securities - diversified equity investments for long-term goals", "returns_percentage": 12, "timeframe": "annual"},
-        {"text": "Pre-IPO shares available! Send money to paytm@insider immediately", "returns_percentage": 300, "timeframe": "1 month"},
-        {"text": "Systematic investment in mutual funds helps achieve financial goals", "returns_percentage": 10, "timeframe": "annual"},
-        {"text": "URGENT: 300% returns in 3 days confirmed. Send money now!", "returns_percentage": 300, "timeframe": "3 days"},
-        {"text": "Angel One Limited - SEBI registered broker providing research reports", "returns_percentage": 0, "timeframe": "unknown"},
-        {"text": "Risk-free trading! Our AI guarantees 50% daily returns", "returns_percentage": 50, "timeframe": "daily"},
-        {"text": "Past performance is not indicative of future returns", "returns_percentage": 0, "timeframe": "unknown"},
-        {"text": "BREAKING: Secret billionaire strategy revealed! 500% returns guaranteed!", "returns_percentage": 500, "timeframe": "monthly"}
+        {"text": "SEBI registered investment advisor. Mutual funds subject to market risks", "roi_percentage": 0, "timeframe": "unknown"},
+        {"text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group", "roi_percentage": 25, "timeframe": "2 weeks"},
+        {"text": "ICICI Securities - diversified equity investments for long-term goals", "roi_percentage": 12, "timeframe": "annual"},
+        {"text": "Pre-IPO shares available! Send money to paytm@insider immediately", "roi_percentage": 300, "timeframe": "1 month"},
+        {"text": "Systematic investment in mutual funds helps achieve financial goals", "roi_percentage": 10, "timeframe": "annual"},
+        {"text": "URGENT: 300% returns in 3 days confirmed. Send money now!", "roi_percentage": 300, "timeframe": "3 days"},
+        {"text": "Angel One Limited - SEBI registered broker providing research reports", "roi_percentage": 0, "timeframe": "unknown"},
+        {"text": "Risk-free trading! Our AI guarantees 50% daily returns", "roi_percentage": 50, "timeframe": "daily"},
+        {"text": "Past performance is not indicative of future returns", "roi_percentage": 0, "timeframe": "unknown"},
+        {"text": "BREAKING: Secret billionaire strategy revealed! 500% returns guaranteed!", "roi_percentage": 500, "timeframe": "monthly"}
     ])
     
     print("\nSample Predictions:")
@@ -237,7 +239,7 @@ def test_sample_predictions(model):
         confidence = max(prob) * 100
         
         print(f"Text: {row['text'][:50]}...")
-        print(f"Returns: {row['returns_percentage']}%, Timeframe: {row['timeframe']}")
+        print(f"Returns: {row['roi_percentage']}%, Timeframe: {row['timeframe']}")
         print(f"Prediction: {prediction} (Confidence: {confidence:.1f}%)")
         print(f"Fraud probability: {prob[1]:.3f}")
         print("-" * 100)
@@ -247,7 +249,7 @@ def main():
     print("=" * 60)
     df = load_and_prepare_data()
     
-    X = df[['text', 'returns_percentage', 'timeframe']].copy()
+    X = df[['text', 'roi_percentage', 'timeframe']].copy()
     X['text'] = X['text'].fillna("").astype(str)
     y = df['label'].astype(int)
     

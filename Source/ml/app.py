@@ -19,14 +19,14 @@ model = None
 
 class ScoreRequest(BaseModel):
     text: str
-    returns_percentage: Optional[int] = None
+    roi_percentage: Optional[int] = None
     timeframe: Optional[str] = None
     
     class Config:
         schema_extra = {
             "example": {
                 "text": "Guaranteed 25% returns in 2 weeks! Join our Telegram group for insider tips.",
-                "returns_percentage": 25,
+                "roi_percentage": 25,
                 "timeframe": "2 weeks"
             }
         }
@@ -87,7 +87,7 @@ def extract_returns_and_timeframe(text: str) -> tuple:
     
     return extracted_returns, extracted_timeframe
 
-def extract_risk_indicators(text: str, returns_percentage: Optional[int] = None, timeframe: Optional[str] = None) -> List[str]:
+def extract_risk_indicators(text: str, roi_percentage: Optional[int] = None, timeframe: Optional[str] = None) -> List[str]:
     """Extract specific risk indicators from text and additional fields"""
     indicators = []
     text_lower = text.lower()
@@ -113,11 +113,11 @@ def extract_risk_indicators(text: str, returns_percentage: Optional[int] = None,
         indicators.append("Pre-IPO or insider trading claims")
     
     # Unrealistic return percentages (>20% in short timeframe)
-    if returns_percentage:
-        if returns_percentage > 50:
-            indicators.append(f"Extremely unrealistic return percentage ({returns_percentage}%)")
-        elif returns_percentage > 20:
-            indicators.append(f"Unrealistic return percentage ({returns_percentage}%)")
+    if roi_percentage:
+        if roi_percentage > 50:
+            indicators.append(f"Extremely unrealistic return percentage ({roi_percentage}%)")
+        elif roi_percentage > 20:
+            indicators.append(f"Unrealistic return percentage ({roi_percentage}%)")
     
     # Short timeframe promises
     if re.search(r'\b(daily|24[-\s]?hours?|1[-\s]?week|2[-\s]?weeks?|few[-\s]?days)\b.*\b(profit|returns?|money)\b', text_lower):
@@ -131,7 +131,7 @@ def extract_risk_indicators(text: str, returns_percentage: Optional[int] = None,
             indicators.append(f"Suspicious short timeframe ({timeframe})")
         
         # Check for unrealistic returns in short timeframes
-        if returns_percentage and returns_percentage > 10:
+        if roi_percentage and roi_percentage > 10:
             if any(risk_tf in timeframe_lower for risk_tf in ['daily', 'hours', 'overnight']):
                 indicators.append("High returns promised in very short timeframe")
     
@@ -171,7 +171,7 @@ async def load_model():
             print(f"✅ Model loaded successfully from: {MODEL_PATH}")
         else:
             print(f"❌ Model file not found at: {MODEL_PATH}")
-            raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+            # raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
     except Exception as e:
         print(f"❌ Error loading model: {str(e)}")
         raise
@@ -180,7 +180,6 @@ async def load_model():
 async def score_text(request: ScoreRequest):
     """Score text for fraud probability with enhanced feature extraction"""
     global model
-    
     if model is None:
         raise HTTPException(
             status_code=503, 
@@ -199,13 +198,13 @@ async def score_text(request: ScoreRequest):
         extracted_returns, extracted_timeframe = extract_returns_and_timeframe(request.text)
         
         # Use provided values or extracted ones
-        returns_percentage = request.returns_percentage or extracted_returns or 0
+        roi_percentage = request.roi_percentage or extracted_returns or 0
         timeframe = request.timeframe or extracted_timeframe or 'unknown'
         
         # Prepare input data for model
         input_data = pd.DataFrame([{
             'text': request.text,
-            'returns_percentage': returns_percentage,
+            'roi_percentage': roi_percentage,
             'timeframe': timeframe
         }])
         
@@ -218,8 +217,7 @@ async def score_text(request: ScoreRequest):
         confidence_level = get_confidence_level(fraud_probability)
         
         # Extract risk indicators with enhanced analysis
-        risk_indicators = extract_risk_indicators(request.text, returns_percentage, timeframe)
-        
+        risk_indicators = extract_risk_indicators(request.text, roi_percentage, timeframe)
         return ScoreResponse(
             fraud_probability=round(fraud_probability, 4),
             prediction=prediction,

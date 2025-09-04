@@ -1,4 +1,14 @@
-import { SubmissionResult, SubmissionSchema } from "./types";
+import { 
+  SubmissionResult, 
+  SubmissionSchema, 
+  MLScoreRequest, 
+  MLScoreResponse, 
+  MLScoreRequestSchema, 
+  MLScoreResponseSchema,
+  SuccessSubmissionResult,
+  ErrorSubmissionResult,
+  MLAnalysis
+} from "./types";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -78,36 +88,136 @@ const SCORING_RULES = [
 export class FraudDetectionService {
   
   async analyzeSubmission(submissionData: SubmissionSchema): Promise<SubmissionResult> {
-    // 1. Only query database for advisor verification
+    // 1. Validate input data
+    const validatedData = SubmissionSchema.parse(submissionData);
 
-    if(!submissionData.advisorRegId || !submissionData.advisorName) {
+    if(!validatedData.advisorRegId || !validatedData.advisorName) {
       return {
         error: "Missing advisor registration ID or name"
       };
     }
 
     const advisorResult = await this.verifyAdvisor(
-      submissionData.advisorRegId, 
-      submissionData.advisorName
+      validatedData.advisorRegId, 
+      validatedData.advisorName
     );
     
     // 2. Apply hardcoded rules for text analysis
-    const textAnalysisResult = this.analyzeText(submissionData.adviceText);
+    const textAnalysisResult = this.analyzeText(validatedData.adviceText);
     
-    // 3. Combine scores
-    const finalScore = this.calculateFinalScore(
+    // 3. ML service analysis
+    let mlAnalysis: MLAnalysis | undefined;
+    try {
+      mlAnalysis = await this.analyzeWithML(
+        validatedData.adviceText, 
+        validatedData.returnPercentage, 
+        validatedData.timeFrame
+      );
+    } catch (error) {
+      console.error("ML service error:", error);
+      // Continue without ML analysis if service is unavailable
+    }
+    
+    // 4. Calculate final score with ML integration
+    const finalScore = this.calculateEnhancedFinalScore(
       advisorResult.score,
-      textAnalysisResult.score
+      textAnalysisResult.score,
+      mlAnalysis?.score
     );
     
     return {
       finalScore,
       riskLevel: this.getRiskLevel(finalScore),
       advisorVerification: advisorResult,
-      detectedRedFlags: textAnalysisResult.redFlags
+      detectedRedFlags: textAnalysisResult.redFlags,
+      mlAnalysis
     };
   }
-  
+
+  private async analyzeWithML(
+    adviceText: string, 
+    returnPercentage?: number, 
+    timeFrame?: string
+  ): Promise<MLAnalysis> {
+    const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000/score';
+    
+    // Extract returns percentage and timeframe from text if not provided
+    const extractedReturns = returnPercentage || this.extractReturnsFromText(adviceText);
+    const extractedTimeframe = timeFrame || this.extractTimeframeFromText(adviceText);
+
+    const requestData: MLScoreRequest = {
+      text: adviceText,
+      returns_percentage: extractedReturns,
+      timeframe: extractedTimeframe
+    };
+
+    // Validate request data with Zod
+    const validatedRequest = MLScoreRequestSchema.parse(requestData);
+
+    const response = await fetch(`${ML_SERVICE_URL}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(validatedRequest),
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+
+    // console.log("Here is the RESPONSE: ", response);
+
+    if (!response.ok) {
+      throw new Error(`ML service returned ${response.status}: ${response.statusText}`);
+    }
+
+    // Use response.json() to parse the JSON response directly
+    let mlResult;
+    try {
+      mlResult = await response.json();
+    } catch (error) {
+      console.error('Error parsing ML service response:', error);
+      throw new Error(`Failed to parse ML service response: ${error}`);
+    }
+    
+    // Validate response data with Zod
+    const validatedResponse = MLScoreResponseSchema.parse(mlResult);
+
+    // Convert ML probability to score (-50 to +50 range)
+    const mlScore = (1 - validatedResponse.fraud_probability) * 100 - 50;
+
+    return {
+      fraudProbability: validatedResponse.fraud_probability,
+      prediction: validatedResponse.prediction,
+      confidenceLevel: validatedResponse.confidence_level,
+      riskIndicators: validatedResponse.risk_indicators,
+      score: mlScore
+    };
+  }
+
+  private extractReturnsFromText(text: string): number | undefined {
+    const returnsMatch = text.match(/(\d+)%/);
+    return returnsMatch ? parseInt(returnsMatch[1]) : undefined;
+  }
+
+  private extractTimeframeFromText(text: string): string | undefined {
+    const timeframePatterns = [
+      { pattern: /(\d+)\s*hours?/i, unit: 'hours' },
+      { pattern: /(\d+)\s*days?/i, unit: 'days' },
+      { pattern: /(\d+)\s*weeks?/i, unit: 'weeks' },
+      { pattern: /(\d+)\s*months?/i, unit: 'months' },
+      { pattern: /daily/i, value: 'daily' },
+      { pattern: /weekly/i, value: 'weekly' },
+      { pattern: /monthly/i, value: 'monthly' }
+    ];
+    
+    for (const { pattern, unit, value } of timeframePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        return value || `${match[1]} ${unit}`;
+      }
+    }
+    return undefined;
+  }
+
   private async verifyAdvisor(regId: string, advisorName: string) {
     if (!regId) {
       return { score: -5, status: "NO_REG_ID", message: "No registration ID provided" };
@@ -250,11 +360,25 @@ export class FraudDetectionService {
     return matrix[str2.length][str1.length];
   }
   
-  private calculateFinalScore(advisorScore: number, textScore: number): number {
-    // Normalize to 0-100 scale
+  private calculateEnhancedFinalScore(
+    advisorScore: number, 
+    textScore: number, 
+    mlScore?: number
+  ): number {
     const baseScore = 50;
-    const combinedScore = baseScore + advisorScore + (textScore * 0.5);
-    return Math.max(0, Math.min(100, combinedScore));
+    
+    if (mlScore !== undefined) {
+      // Use weighted combination: 30% advisor, 30% rules, 40% ML
+      const combinedScore = baseScore + 
+        (advisorScore * 0.3) + 
+        (textScore * 0.3) + 
+        (mlScore * 0.4);
+      return Math.max(0, Math.min(100, combinedScore));
+    } else {
+      // Fallback to original calculation if ML unavailable
+      const combinedScore = baseScore + advisorScore + (textScore * 0.5);
+      return Math.max(0, Math.min(100, combinedScore));
+    }
   }
   
   private getRiskLevel(score: number): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
@@ -273,4 +397,4 @@ export class FraudDetectionService {
 }
 
 // Export instance for use
-export const ruleBasedFraudDetector = new FraudDetectionService();
+export const FraudDetector = new FraudDetectionService();
