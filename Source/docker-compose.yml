@@ -12,6 +12,11 @@ services:
       - ../DBMount:/data
     ports:
       - "5432:5432"
+    develop:
+      watch:
+        - path: ../DBMount
+          target: /data
+          action: sync
 
   redis:
     image: redis:7

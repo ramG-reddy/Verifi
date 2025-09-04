@@ -114,7 +114,7 @@ export class FraudDetectionService {
     }
     
     const advisor = await prisma.advisor.findUnique({
-      where: { registrationId: regId }
+      where: { registration_id: regId }
     });
     
     if (!advisor) {

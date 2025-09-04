@@ -1,32 +1,86 @@
--- Master script to populate all tables
+-- -- Ensure required extensions (UUID, etc.) if needed
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-\echo 'Starting database population...'
+-- -- ================================
+-- -- 1. Create Tables (matching Prisma schema)
+-- -- ================================
+-- CREATE TABLE IF NOT EXISTS advisors (
+--     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+--     registrationId  TEXT UNIQUE NOT NULL,
+--     name            TEXT NOT NULL,
+--     email           TEXT,
+--     phone           TEXT,
+--     address         TEXT,
+--     status          TEXT DEFAULT 'ACTIVE',
+--     registrationDate TIMESTAMP,
+--     expiryDate      TIMESTAMP,
+--     category        TEXT,
+--     qualifications  TEXT,
+--     specialization  TEXT,
+--     createdAt       TIMESTAMP DEFAULT NOW(),
+--     updatedAt       TIMESTAMP DEFAULT NOW()
+-- );
 
-\echo 'Populating advisors table...'
--- \i /data/populate_advisors.sql
-\copy advisors FROM '/data/advisors.csv' WITH CSV HEADER
+-- CREATE TABLE IF NOT EXISTS companies (
+--     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+--     registrationId  TEXT UNIQUE NOT NULL,
+--     name            TEXT NOT NULL,
+--     email           TEXT,
+--     phone           TEXT,
+--     address         TEXT,
+--     companyType     TEXT,
+--     status          TEXT DEFAULT 'ACTIVE',
+--     registrationDate TIMESTAMP,
+--     expiryDate      TIMESTAMP,
+--     website         TEXT,
+--     createdAt       TIMESTAMP DEFAULT NOW(),
+--     updatedAt       TIMESTAMP DEFAULT NOW()
+-- );
 
-\echo 'Populating companies table...'
--- \i /data/populate_companies.sql
-\copy companies FROM '/data/companies.csv' WITH CSV HEADER
+-- CREATE TABLE IF NOT EXISTS ipos (
+--     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+--     companyId       TEXT NOT NULL,
+--     name            TEXT NOT NULL,
+--     symbol          TEXT,
+--     issueSize       NUMERIC,
+--     priceRange      TEXT,
+--     openDate        TIMESTAMP,
+--     closeDate       TIMESTAMP,
+--     listingDate     TIMESTAMP,
+--     status          TEXT DEFAULT 'UPCOMING',
+--     exchange        TEXT,
+--     createdAt       TIMESTAMP DEFAULT NOW(),
+--     updatedAt       TIMESTAMP DEFAULT NOW(),
+--     CONSTRAINT fk_company FOREIGN KEY (companyId) REFERENCES companies(id)
+-- );
 
-\echo 'Populating ipos table...'
--- \i /data/populate_ipos.sql
-\copy ipos FROM '/data/ipos.csv' WITH CSV HEADER
+-- ================================
+-- 2. Import Data from CSVs
+-- ================================
 
-\echo 'Database population completed!'
-\echo 'Summary:'
+COPY advisors(registration_id, name, email, phone, address, status, registration_date, expiry_date, category, qualifications, specialization)
+FROM '/data/advisors.csv'
+DELIMITER ','
+CSV HEADER
+NULL '';
+
+COPY companies(registration_id, name, email, phone, address, company_type, status, registration_date, expiry_date, website)
+FROM '/data/companies.csv'
+DELIMITER ','
+CSV HEADER
+NULL '';
+
+COPY ipos(company_id, name, symbol, issue_size, price_range, open_date, close_date, listing_date, status, exchange)
+FROM '/data/ipos.csv'
+DELIMITER ','
+CSV HEADER
+NULL '';
+
+
+-- ================================
+-- 3. Verification / Summary Query
+-- ================================
 SELECT 
-    'advisors' as table_name, 
-    COUNT(*) as record_count 
-FROM advisors
-UNION ALL
-SELECT 
-    'companies' as table_name, 
-    COUNT(*) as record_count 
-FROM companies
-UNION ALL
-SELECT 
-    'ipos' as table_name, 
-    COUNT(*) as record_count 
-FROM ipos;
+    (SELECT COUNT(*) FROM advisors)   AS total_advisors,
+    (SELECT COUNT(*) FROM companies)  AS total_companies,
+    (SELECT COUNT(*) FROM ipos)       AS total_ipos;

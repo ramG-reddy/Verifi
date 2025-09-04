@@ -9,22 +9,22 @@ datasource db {
 // Registered Investment Advisors
 model Advisor {
   id            String   @id @default(cuid())
-  registrationId String  @unique // INA00XX...
+  registration_id String  @unique // INA00XX...
   name          String
   email         String?
   phone         String?
   address       String?
   status        String   @default("ACTIVE") // ACTIVE, SUSPENDED, CANCELLED
-  registrationDate DateTime?
-  expiryDate    DateTime?
+  registration_date DateTime?
+  expiry_date    DateTime?
   category      String?  // Individual, Corporate, etc.
   
   // Additional fields for better verification
   qualifications String? // Educational/professional qualifications
   specialization String? // Investment specialization areas
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
   
   @@map("advisors")
 }
@@ -32,18 +32,18 @@ model Advisor {
 // Registered Companies (Mutual Funds, Portfolio Managers, etc.)
 model Company {
   id            String   @id @default(cuid())
-  registrationId String  @unique
+  registration_id String  @unique
   name          String
   email         String?
   phone         String?
   address       String?
-  companyType   String?  // Mutual Fund, Portfolio Manager, etc.
+  company_type   String?  // Mutual Fund, Portfolio Manager, etc.
   status        String   @default("ACTIVE")
-  registrationDate DateTime?
-  expiryDate    DateTime?
+  registration_date DateTime?
+  expiry_date    DateTime?
   website       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
   
   @@map("companies")
 }
@@ -51,18 +51,17 @@ model Company {
 // IPO Information
 model Ipo {
   id            String   @id @default(cuid())
-  companyId     String
   name          String
   symbol        String?
-  issueSize     Decimal?
-  priceRange    String?
-  openDate      DateTime?
-  closeDate     DateTime?
-  listingDate   DateTime?
+  issue_size     Decimal?
+  price_range    String?
+  open_date      DateTime?
+  close_date     DateTime?
+  listing_date   DateTime?
   status        String   @default("UPCOMING") // UPCOMING, OPEN, CLOSED, LISTED
   exchange      String?  // NSE, BSE
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
   
   @@map("ipos")
 }

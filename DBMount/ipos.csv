@@ -1,55 +1,55 @@
-name                                   , symbol   , issueSize, priceRange      , openDate  , closeDate , listingDate, status  , exchange
-Shringar House of Mangalsutra Ltd.     , SHRINGAR ,      0   ,                 ,           ,           , UPCOMING   , BSE NSE ,
-Taurian MPS Ltd.                       , TAURIAN  ,     42.53, 162.00 to 171.00, 2025-09-08, 2025-09-10,            , UPCOMING, NSE SME
-Karbonsteel Engineering Ltd.           , KARBON   ,     59.3 , 151.00 to 159.00, 2025-09-08, 2025-09-10,            , UPCOMING, BSE SME
-Vashishtha Luxury Fashion Ltd.         , VASHI    ,      8.87, 109.00 to 111.00, 2025-09-05, 2025-09-10,            , UPCOMING, BSE SME
-Sharvaya Metals Ltd.                   , SHARVAYA ,     58.8 , 192.00 to 196.00, 2025-09-04, 2025-09-09,            , UPCOMING, BSE SME
-Vigor Plast India Ltd.                 , VIGOR    ,     25.1 , 77.00 to 81.00  , 2025-09-04, 2025-09-09,            , UPCOMING, NSE SME
-Austere Systems Ltd.                   , AUSTERE  ,     15.57, 52.00 to 55.00  , 2025-09-03, 2025-09-08,            , UPCOMING, BSE SME
-Optivalue Tek Consulting Ltd.          , OPTI     ,     51.82, 80.00 to 84.00  , 2025-09-02, 2025-09-04,            , UPCOMING, NSE SME
-Goel Construction Co.Ltd.              , GOEL     ,    100.15, 250.00 to 263.00, 2025-09-02, 2025-09-04,            , UPCOMING, BSE SME
-Amanta Healthcare Ltd.                 , AMANTA   ,    126   , 126             , 2025-09-01, 2025-09-03,            , UPCOMING, BSE NSE
-Rachit Prints Ltd.                     , RACHIT   ,     19.49, 140.00 to 149.00, 2025-09-01, 2025-09-03,            , UPCOMING, BSE SME
-Sugs Lloyd Ltd.                        , SUGS     ,     85.66, 117.00 to 123.00, 2025-08-29, 2025-09-02,            , UPCOMING, BSE SME
-Snehaa Organics Ltd.                   , SNEHAA   ,     32.68, 122             , 2025-08-29, 2025-09-02,            , UPCOMING, NSE SME
-Abril Paper Tech Ltd.                  , ABRIL    ,     13.42, 61              , 2025-08-29, 2025-09-02,            , UPCOMING, BSE SME
-Oval Projects Engineering Ltd.         , OVAL     ,     46.74, 80.00 to 85.00  , 2025-08-28, 2025-09-01, Yet to list, OPEN    , BSE SME
-Anlon Healthcare Ltd.                  , ANLON    ,    121.03, 91              , 2025-08-26, 2025-08-29, Yet to list, CLOSED  , BSE NSE
-Vikran Engineering Ltd.                , VIKRAN   ,    772   , 97              , 2025-08-26, 2025-08-29, 2025-09-03 , LISTED  , BSE NSE
-Current Infraprojects Ltd.             , CURRENT  ,     41.8 , 80              , 2025-08-26, 2025-08-29, 2025-09-03 , LISTED  , NSE SME
-Sattva Engineering Construction Ltd.   , SATTVA   ,     35.38, 75              , 2025-08-26, 2025-08-29, 2025-09-03 , LISTED  , NSE SME
-Globtier Infotech Ltd.                 , GLOBTIER ,     31.05, 72              , 2025-08-25, 2025-08-28, 2025-09-02 , LISTED  , BSE SME
-NIS Management Ltd.                    , NIS      ,     60.01, 111             , 2025-08-25, 2025-08-28, 2025-09-02 , LISTED  , BSE SME
-Anondita Medicare Ltd.                 , ANONDITA ,     69.5 , 145             , 2025-08-22, 2025-08-26, 2025-09-01 , LISTED  , NSE SME
-Shivashrit Foods Ltd.                  , SHIVA    ,     70.03, 142             , 2025-08-22, 2025-08-26, 2025-09-01 , LISTED  , NSE SME
-Classic Electrodes (India) Ltd.        , CLASSIC  ,     41.51, 87              , 2025-08-22, 2025-08-26, 2025-09-01 , LISTED  , NSE SME
-ARC Insulation & Insulators Ltd.       , ARC      ,     41.19, 125             , 2025-08-21, 2025-08-25, 2025-08-29 , LISTED  , NSE SME
-Mangal Electrical Industries Ltd.      , MANGAL   ,    400   , 561             , 2025-08-20, 2025-08-22, 2025-08-28 , LISTED  , BSE NSE
-Shreeji Shipping Global Ltd.           , SHREEJI  ,    410.71, 252             , 2025-08-19, 2025-08-21, 2025-08-26 , LISTED  , BSE NSE
-Gem Aromatics Ltd.                     , GEM      ,    451.25, 325             , 2025-08-19, 2025-08-21, 2025-08-26 , LISTED  , BSE NSE
-LGT Business Connextions Ltd.          , LGT      ,     28.09, 107             , 2025-08-19, 2025-08-21, 2025-08-26 , LISTED  , BSE SME
-Vikram Solar Ltd.                      , VIKRAM   ,   2079.37, 332             , 2025-08-19, 2025-08-21, 2025-08-26 , LISTED  , BSE NSE
-Patel Retail Ltd.                      , PATEL    ,    242.66, 255             , 2025-08-19, 2025-08-21, 2025-08-26 , LISTED  , BSE NSE
-Studio LSD Ltd.                        , STUDIO   ,     74.25, 54              , 2025-08-18, 2025-08-20, 2025-08-25 , LISTED  , NSE SME
-Regaal Resources Ltd.                  , REGAAL   ,    306   , 102             , 2025-08-12, 2025-08-14, 2025-08-20 , LISTED  , BSE NSE
-Mahendra Realtors & Infrastructure Ltd., MAHENDRA ,     49.45, 85              , 2025-08-12, 2025-08-14, 2025-08-20 , LISTED  , NSE SME
-BlueStone Jewellery & Lifestyle Ltd.   , BLUE     ,   1540.65, 517             , 2025-08-11, 2025-08-13, 2025-08-19 , LISTED  , BSE NSE
-Icodex Publishing Solutions Ltd.       , ICODEX   ,     42.03, 102             , 2025-08-11, 2025-08-13, 2025-08-19 , LISTED  , BSE SME
-ANB Metal Cast Ltd.                    , ANB      ,     49.92, 156             , 2025-08-08, 2025-08-12, 2025-08-18 , LISTED  , NSE SME
-Medistep Healthcare Ltd.               , MEDISTEP ,     16.1 , 43              , 2025-08-08, 2025-08-12, 2025-08-18 , LISTED  , NSE SME
-Star Imaging & Path Lab Ltd.           , STAR     ,     69.47, 142             , 2025-08-08, 2025-08-12, 2025-08-18 , LISTED  , BSE SME
-All Time Plastics Ltd.                 , ALLTIME  ,    400.6 , 275             , 2025-08-07, 2025-08-11, 2025-08-14 , LISTED  , BSE NSE
-Connplex Cinemas Ltd.                  , CONNPLEX ,     90.27, 177             , 2025-08-07, 2025-08-11, 2025-08-14 , LISTED  , NSE SME
-JSW Cement Ltd.                        , JSW      ,   3600.00, 147             , 2025-08-07, 2025-08-11, 2025-08-14 , LISTED  , BSE NSE
-Sawaliya Foods Products Ltd.           , SAWALIYA ,     34.83, 120             , 2025-08-07, 2025-08-11, 2025-08-14 , LISTED  , NSE SME
-Highway Infrastructure Ltd.            , HIGHWAY  ,    130   , 70              , 2025-08-05, 2025-08-07, 2025-08-12 , LISTED  , BSE NSE
-Knowledge Realty Trust REIT            , KNOWLEDGE,   4800.00, 100             , 2025-08-05, 2025-08-07, 2025-08-18 , LISTED  , BSE NSE
-Bhadora Industries Ltd.                , BHADORA  ,     55.62, 103             , 2025-08-04, 2025-08-06, 2025-08-11 , LISTED  , NSE SME
-Parth Electricals & Engineering Ltd.   , PARTH    ,     49.67, 170             , 2025-08-04, 2025-08-06, 2025-08-11 , LISTED  , NSE SME
-Jyoti Global Plast Ltd.                , JYOTI    ,     35.44, 66              , 2025-08-04, 2025-08-06, 2025-08-11 , LISTED  , NSE SME
-Aaradhya Disposal Industries Ltd.      , AARADHYA ,     45.1 , 116             , 2025-08-04, 2025-08-06, 2025-08-11 , LISTED  , NSE SME
-BLT Logistics Ltd.                     , BLT      ,      9.72, 75              , 2025-08-04, 2025-08-06, 2025-08-11 , LISTED  , BSE SME
-Essex Marine Ltd.                      , ESSEX    ,     23.01, 54              , 2025-08-04, 2025-08-06, 2025-08-11 , LISTED  , BSE SME
-Flysbs Aviation Ltd.                   , FLYSBS   ,    102.53, 225             , 2025-08-01, 2025-08-05, 2025-08-08 , LISTED  , NSE SME
-Cash Ur Drive Marketing Ltd.           , CASH     ,     60.79, 130             , 2025-07-31, 2025-08-04, 2025-08-07 , LISTED  , NSE SME
-Renol Polychem Ltd.                    , RENOL    ,     25.77, 105             , 2025-07-31, 2025-08-04, 2025-08-07 , LISTED  , NSE SME
+name                                   , symbol   , issue_size, price_range     , status  , exchange
+Shringar House of Mangalsutra Ltd.     , SHRINGAR ,       0   ,                 , BSE NSE , 
+Taurian MPS Ltd.                       , TAURIAN  ,      42.53, 162.00 to 171.00, UPCOMING, NSE SME
+Karbonsteel Engineering Ltd.           , KARBON   ,      59.3 , 151.00 to 159.00, UPCOMING, BSE SME
+Vashishtha Luxury Fashion Ltd.         , VASHI    ,       8.87, 109.00 to 111.00, UPCOMING, BSE SME
+Sharvaya Metals Ltd.                   , SHARVAYA ,      58.8 , 192.00 to 196.00, UPCOMING, BSE SME
+Vigor Plast India Ltd.                 , VIGOR    ,      25.1 , 77.00 to 81.00  , UPCOMING, NSE SME
+Austere Systems Ltd.                   , AUSTERE  ,      15.57, 52.00 to 55.00  , UPCOMING, BSE SME
+Optivalue Tek Consulting Ltd.          , OPTI     ,      51.82, 80.00 to 84.00  , UPCOMING, NSE SME
+Goel Construction Co.Ltd.              , GOEL     ,     100.15, 250.00 to 263.00, UPCOMING, BSE SME
+Amanta Healthcare Ltd.                 , AMANTA   ,     126   , 126             , UPCOMING, BSE NSE
+Rachit Prints Ltd.                     , RACHIT   ,      19.49, 140.00 to 149.00, UPCOMING, BSE SME
+Sugs Lloyd Ltd.                        , SUGS     ,      85.66, 117.00 to 123.00, UPCOMING, BSE SME
+Snehaa Organics Ltd.                   , SNEHAA   ,      32.68, 122             , UPCOMING, NSE SME
+Abril Paper Tech Ltd.                  , ABRIL    ,      13.42, 61              , UPCOMING, BSE SME
+Oval Projects Engineering Ltd.         , OVAL     ,      46.74, 80.00 to 85.00  , OPEN    , BSE SME
+Anlon Healthcare Ltd.                  , ANLON    ,     121.03, 91              , CLOSED  , BSE NSE
+Vikran Engineering Ltd.                , VIKRAN   ,     772   , 97              , LISTED  , BSE NSE
+Current Infraprojects Ltd.             , CURRENT  ,      41.8 , 80              , LISTED  , NSE SME
+Sattva Engineering Construction Ltd.   , SATTVA   ,      35.38, 75              , LISTED  , NSE SME
+Globtier Infotech Ltd.                 , GLOBTIER ,      31.05, 72              , LISTED  , BSE SME
+NIS Management Ltd.                    , NIS      ,      60.01, 111             , LISTED  , BSE SME
+Anondita Medicare Ltd.                 , ANONDITA ,      69.5 , 145             , LISTED  , NSE SME
+Shivashrit Foods Ltd.                  , SHIVA    ,      70.03, 142             , LISTED  , NSE SME
+Classic Electrodes (India) Ltd.        , CLASSIC  ,      41.51, 87              , LISTED  , NSE SME
+ARC Insulation & Insulators Ltd.       , ARC      ,      41.19, 125             , LISTED  , NSE SME
+Mangal Electrical Industries Ltd.      , MANGAL   ,     400   , 561             , LISTED  , BSE NSE
+Shreeji Shipping Global Ltd.           , SHREEJI  ,     410.71, 252             , LISTED  , BSE NSE
+Gem Aromatics Ltd.                     , GEM      ,     451.25, 325             , LISTED  , BSE NSE
+LGT Business Connextions Ltd.          , LGT      ,      28.09, 107             , LISTED  , BSE SME
+Vikram Solar Ltd.                      , VIKRAM   ,    2079.37, 332             , LISTED  , BSE NSE
+Patel Retail Ltd.                      , PATEL    ,     242.66, 255             , LISTED  , BSE NSE
+Studio LSD Ltd.                        , STUDIO   ,      74.25, 54              , LISTED  , NSE SME
+Regaal Resources Ltd.                  , REGAAL   ,     306   , 102             , LISTED  , BSE NSE
+Mahendra Realtors & Infrastructure Ltd., MAHENDRA ,      49.45, 85              , LISTED  , NSE SME
+BlueStone Jewellery & Lifestyle Ltd.   , BLUE     ,    1540.65, 517             , LISTED  , BSE NSE
+Icodex Publishing Solutions Ltd.       , ICODEX   ,      42.03, 102             , LISTED  , BSE SME
+ANB Metal Cast Ltd.                    , ANB      ,      49.92, 156             , LISTED  , NSE SME
+Medistep Healthcare Ltd.               , MEDISTEP ,      16.1 , 43              , LISTED  , NSE SME
+Star Imaging & Path Lab Ltd.           , STAR     ,      69.47, 142             , LISTED  , BSE SME
+All Time Plastics Ltd.                 , ALLTIME  ,     400.6 , 275             , LISTED  , BSE NSE
+Connplex Cinemas Ltd.                  , CONNPLEX ,      90.27, 177             , LISTED  , NSE SME
+JSW Cement Ltd.                        , JSW      ,    3600.00, 147             , LISTED  , BSE NSE
+Sawaliya Foods Products Ltd.           , SAWALIYA ,      34.83, 120             , LISTED  , NSE SME
+Highway Infrastructure Ltd.            , HIGHWAY  ,     130   , 70              , LISTED  , BSE NSE
+Knowledge Realty Trust REIT            , KNOWLEDGE,    4800.00, 100             , LISTED  , BSE NSE
+Bhadora Industries Ltd.                , BHADORA  ,      55.62, 103             , LISTED  , NSE SME
+Parth Electricals & Engineering Ltd.   , PARTH    ,      49.67, 170             , LISTED  , NSE SME
+Jyoti Global Plast Ltd.                , JYOTI    ,      35.44, 66              , LISTED  , NSE SME
+Aaradhya Disposal Industries Ltd.      , AARADHYA ,      45.1 , 116             , LISTED  , NSE SME
+BLT Logistics Ltd.                     , BLT      ,       9.72, 75              , LISTED  , BSE SME
+Essex Marine Ltd.                      , ESSEX    ,      23.01, 54              , LISTED  , BSE SME
+Flysbs Aviation Ltd.                   , FLYSBS   ,     102.53, 225             , LISTED  , NSE SME
+Cash Ur Drive Marketing Ltd.           , CASH     ,      60.79, 130             , LISTED  , NSE SME
+Renol Polychem Ltd.                    , RENOL    ,      25.77, 105             , LISTED  , NSE SME
