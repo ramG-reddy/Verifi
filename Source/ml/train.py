@@ -301,10 +301,26 @@ def main():
     
     test_sample_predictions(best_model) # Testing sample predictions with new format
     
-    print(f"\nTraining completed successfully!")
-    print(f"Model type: {best_name}")
-    print(f"Features: {len(feature_names)}")
-    print(f"Training samples: {len(X_train)}")
+    # Fix: Extract feature names from the trained model's preprocessor
+    try:
+        feature_names = (
+            best_model.named_steps['preprocessor']
+            .named_transformers_['text']
+            .get_feature_names_out().tolist() +
+            ['roi_percentage'] +
+            best_model.named_steps['preprocessor']
+            .named_transformers_['timeframe']
+            .get_feature_names_out().tolist()
+        )
+        print(f"\nTraining completed successfully!")
+        print(f"Model type: {best_name}")
+        print(f"Features: {len(feature_names)}")
+        print(f"Training samples: {len(X_train)}")
+    except Exception as e:
+        print(f"\nTraining completed successfully!")
+        print(f"Model type: {best_name}")
+        print(f"Features: Could not extract feature names ({e})")
+        print(f"Training samples: {len(X_train)}")
 
 if __name__ == "__main__":
     main()

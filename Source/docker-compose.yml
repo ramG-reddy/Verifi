@@ -24,7 +24,7 @@ services:
       watch:
         - path: ./ml
           target: /app
-          action: sync
+          action: restart
     ports:
       - "8001:8001"
     depends_on:
