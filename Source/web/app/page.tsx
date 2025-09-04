@@ -17,6 +17,10 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.adviceText) {
+      alert('Please fill in all required fields');
+      return;
+    }
     setLoading(true);
     setResult(null);
 
@@ -123,7 +127,7 @@ export default function HomePage() {
               <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                 <div className="w-4 h-4 bg-purple-500 rounded mr-2"></div>
                 Text Message / SMS Content
-                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Optional</span>
+                {/* <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Optional</span> */}
               </label>
               <textarea
                 value={formData.adviceText}

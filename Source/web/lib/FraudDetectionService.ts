@@ -169,14 +169,65 @@ export class FraudDetectionService {
   }
   
   private calculateStringSimilarity(str1: string, str2: string): number {
-    // Simple Levenshtein distance-based similarity
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
+    // Normalize strings for comparison
+    const normalize = (s: string) => s.toLowerCase().trim().replace(/[^\w\s]/g, '');
+    const normalized1 = normalize(str1);
+    const normalized2 = normalize(str2);
     
-    if (longer.length === 0) return 1.0;
+    // If exact match after normalization
+    if (normalized1 === normalized2) return 1.0;
     
-    const distance = this.levenshteinDistance(longer, shorter);
-    return (longer.length - distance) / longer.length;
+    // Check if one is a substring of the other (for partial name matches)
+    if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+      const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
+      const shorter = normalized1.length > normalized2.length ? normalized2 : normalized1;
+      return Math.max(0.8, shorter.length / longer.length);
+    }
+    
+    // Split into words for better matching
+    const words1 = normalized1.split(/\s+/);
+    const words2 = normalized2.split(/\s+/);
+    
+    // Check word-level matches (useful for "John Smith" vs "Smith John")
+    let wordMatches = 0;
+    let totalWords = Math.max(words1.length, words2.length);
+    
+    for (const word1 of words1) {
+      for (const word2 of words2) {
+        if (this.wordSimilarity(word1, word2) >= 0.8) {
+          wordMatches++;
+          break;
+        }
+      }
+    }
+    
+    const wordMatchScore = wordMatches / totalWords;
+    
+    // Use Levenshtein distance for character-level similarity
+    const distance = this.levenshteinDistance(normalized1, normalized2);
+    const longer = Math.max(normalized1.length, normalized2.length);
+    const characterMatchScore = longer > 0 ? (longer - distance) / longer : 1.0;
+    
+    // Combine word-level and character-level similarity with higher weight on word matching
+    const finalScore = (wordMatchScore * 0.7) + (characterMatchScore * 0.3);
+    
+    // Lower threshold for acceptance - be more lenient
+    return finalScore;
+  }
+  
+  private wordSimilarity(word1: string, word2: string): number {
+    if (word1 === word2) return 1.0;
+    if (word1.length === 0 || word2.length === 0) return 0.0;
+    
+    // Check if one word is contained in another (for abbreviations)
+    if (word1.includes(word2) || word2.includes(word1)) {
+      return Math.max(0.8, Math.min(word1.length, word2.length) / Math.max(word1.length, word2.length));
+    }
+    
+    // Use Levenshtein for individual words
+    const distance = this.levenshteinDistance(word1, word2);
+    const longer = Math.max(word1.length, word2.length);
+    return (longer - distance) / longer;
   }
   
   private levenshteinDistance(str1: string, str2: string): number {
