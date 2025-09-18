@@ -8,11 +8,11 @@
 
 1. **Start the services**
 ```bash
-cd d:\.ramG\Projects\SEBI
+cd path/to/folder
 docker compose up -d
 ```
 
-2. **Initialize the database**
+2. **Initialize the database** _(Only the first time of setup)_
 ```bash
 # Generate Prisma client
 docker compose exec web npx prisma generate
@@ -36,3 +36,4 @@ docker compose exec postgres psql -U postgres -d advisor_db
 ```bash
 docker compose stop
 ```
+
